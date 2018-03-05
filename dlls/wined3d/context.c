@@ -5019,7 +5019,11 @@ void draw_primitive(struct wined3d_device *device, const struct wined3d_state *s
     if (parameters->indexed)
     {
         struct wined3d_buffer *index_buffer = state->index_buffer;
-        if (!wined3d_buffer_gl(index_buffer)->buffer_object || !stream_info->all_vbo)
+        if (wined3d_buffer_gl(index_buffer)->b.locations & WINED3D_LOCATION_PERSISTENT_MAP)
+        {
+            idx_data = index_buffer->cs_persistent_map.offset;
+        }
+        else if (!wined3d_buffer_gl(index_buffer)->buffer_object || !stream_info->all_vbo)
         {
             idx_data = index_buffer->resource.heap_memory;
         }

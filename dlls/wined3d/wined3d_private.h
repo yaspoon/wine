@@ -1470,6 +1470,7 @@ struct wined3d_bo_address
 {
     UINT_PTR buffer_object;
     BYTE *addr;
+    GLsizeiptr length;
 };
 
 struct wined3d_const_bo_address
@@ -3135,6 +3136,9 @@ struct wined3d_resource_ops
     HRESULT (*resource_map_info)(struct wined3d_resource *resource, unsigned int sub_resource_idx,
             struct wined3d_map_info *info, DWORD flags);
     HRESULT (*resource_sub_resource_unmap)(struct wined3d_resource *resource, unsigned int sub_resource_idx);
+    HRESULT (*resource_sub_resource_map_cs)(struct wined3d_resource *resource, unsigned int sub_resource_idx,
+            struct wined3d_map_desc *map_desc, const struct wined3d_box *box, DWORD flags);
+    HRESULT (*resource_sub_resource_unmap_cs)(struct wined3d_resource *resource, unsigned int sub_resource_idx);
 };
 
 struct wined3d_resource
@@ -3472,6 +3476,7 @@ void wined3d_texture_gl_set_compatible_renderbuffer(struct wined3d_texture_gl *t
 #define WINED3D_LOCATION_DRAWABLE       0x00000040
 #define WINED3D_LOCATION_RB_MULTISAMPLE 0x00000080
 #define WINED3D_LOCATION_RB_RESOLVED    0x00000100
+#define WINED3D_LOCATION_PERSISTENT_MAP 0x00000200
 
 const char *wined3d_debug_location(DWORD location) DECLSPEC_HIDDEN;
 
@@ -3775,6 +3780,7 @@ void wined3d_cs_emit_unload_resource(struct wined3d_cs *cs, struct wined3d_resou
 void wined3d_cs_emit_update_sub_resource(struct wined3d_cs *cs, struct wined3d_resource *resource,
         unsigned int sub_resource_idx, const struct wined3d_box *box, const void *data, unsigned int row_pitch,
         unsigned int slice_pitch) DECLSPEC_HIDDEN;
+void wined3d_cs_emit_discard_buffer(struct wined3d_cs *cs, struct wined3d_buffer *buffer, struct wined3d_map_range map_range) DECLSPEC_HIDDEN;
 void wined3d_cs_init_object(struct wined3d_cs *cs,
         void (*callback)(void *object), void *object) DECLSPEC_HIDDEN;
 HRESULT wined3d_cs_map(struct wined3d_cs *cs, struct wined3d_resource *resource, unsigned int sub_resource_idx,
@@ -3887,6 +3893,11 @@ struct wined3d_buffer
     UINT stride;                                            /* 0 if no conversion */
     enum wined3d_buffer_conversion_type *conversion_map;    /* NULL if no conversion */
     UINT conversion_stride;                                 /* 0 if no shifted conversion */
+
+    /* persistent mapped buffer */
+    struct wined3d_buffer_heap *buffer_heap;
+    struct wined3d_map_range cs_persistent_map;
+    struct wined3d_map_range mt_persistent_map; // TODO: make struct list?
 };
 
 static inline struct wined3d_buffer *buffer_from_resource(struct wined3d_resource *resource)
