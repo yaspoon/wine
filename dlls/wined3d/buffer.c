@@ -275,7 +275,7 @@ fail:
 }
 
 /* Context activation is done by the caller. */
-static BOOL buffer_alloc_persistent_map(struct wined3d_buffer *buffer, struct wined3d_context *context)
+static BOOL buffer_alloc_persistent_map(struct wined3d_buffer_gl *buffer_gl)
 {
     struct wined3d_device *device = buffer_gl->b.resource.device;
     struct wined3d_buffer_heap *heap;
@@ -689,7 +689,7 @@ static BOOL wined3d_buffer_prepare_location(struct wined3d_buffer *buffer,
                 WARN("Trying to map a persistent region for buffer %p without WINED3D_BUFFER_PERSISTENT.\n", buffer);
                 return FALSE;
             }
-            return buffer_alloc_persistent_map(buffer, context);
+            return buffer_alloc_persistent_map(wined3d_buffer_gl(buffer));
 
         default:
             ERR("Invalid location %s.\n", wined3d_debug_location(location));
@@ -1122,7 +1122,7 @@ static HRESULT wined3d_buffer_gl_map(struct wined3d_buffer_gl *buffer_gl,
         const struct wined3d_gl_info *gl_info;
         context = context_acquire(device, NULL, 0);
 
-        FIXME_(d3d_perf)("Fences not used for persistent buffer maps on CS thread, using glFinish.\n");
+        FIXME_(d3d_perf)("Fences not used for persistent buffer maps on CS thread, using glFinish (flags: %x)\n", flags);
 
         gl_info = context->gl_info;
         gl_info->gl_ops.gl.p_glFinish();
@@ -1420,9 +1420,21 @@ static HRESULT buffer_resource_sub_resource_map(struct wined3d_resource *resourc
 
     // Support immediate mapping of persistent buffers off the command thread,
     // which require no GL calls to interface with.
-    if (buffer->locations & WINED3D_LOCATION_PERSISTENT_MAP)
+    if (buffer_gl->b.flags & WINED3D_BUFFER_PERSISTENT)
     {
-        map_desc->row_pitch = map_desc->slice_pitch = buffer->desc.byte_width;
+        // Attempt to load a persistent map without syncing, if possible.
+        if (!(buffer_gl->b.locations & WINED3D_LOCATION_PERSISTENT_MAP))
+        {
+            wined3d_resource_wait_idle(resource);
+            if (!buffer_alloc_persistent_map(buffer_gl))
+            {
+                ERR_(d3d_perf)("Failed to allocate persistent buffer, falling back to sync path.");
+                return E_FAIL;
+            }
+            wined3d_buffer_validate_location(buffer_gl, WINED3D_LOCATION_PERSISTENT_MAP);
+        }
+
+        map_desc->row_pitch = map_desc->slice_pitch = resource->size;
         if (buffer_gl->b.flags & WINED3D_MAP_DISCARD)
         {
             HRESULT hr;
@@ -1441,6 +1453,7 @@ static HRESULT buffer_resource_sub_resource_map(struct wined3d_resource *resourc
             // currently used buffer to the free pool, along with the fence that
             // must be called before the buffer can be reused.
             wined3d_cs_emit_discard_buffer(resource->device->cs, buffer_gl, map_range);
+
             return WINED3D_OK;
         }
         else if (buffer_gl->b.flags & WINED3D_MAP_NOOVERWRITE)
@@ -1451,14 +1464,11 @@ static HRESULT buffer_resource_sub_resource_map(struct wined3d_resource *resourc
             struct wined3d_map_range map_range = buffer_gl->b.mt_persistent_map;
             map_desc->data = buffer_gl->b.buffer_heap->map_ptr + map_range.offset + offset;
             resource->map_count++;
+
             return WINED3D_OK;
         }
-        else
-        {
-            // TODO(acomminos): Should check mapped ranges to see if the region is writeable even though NOOVERWRITE is specified.
-            WARN_(d3d_perf)("Mapping persistent buffer %p in sync with CS thread.\n", buffer_gl);
-            // XXX(acomminos): kill this early return. they're the worst.
-        }
+
+        WARN_(d3d_perf)("Mapping persistent buffer %p in sync with CS thread.\n", buffer_gl);
     }
 
     return E_NOTIMPL;
