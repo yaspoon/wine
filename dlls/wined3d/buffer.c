@@ -1631,9 +1631,9 @@ static HRESULT wined3d_buffer_init(struct wined3d_buffer *buffer, struct wined3d
 
     if (buffer->resource.usage & WINED3DUSAGE_DYNAMIC)
     {
-        if (!gl_info->supported[ARB_BUFFER_STORAGE])
+        if (!device->use_pba)
         {
-            WARN_(d3d_perf)("Not creating a persistent mapping for a dynamic buffer because ARB_buffer_storage is unsupported.\n");
+            WARN_(d3d_perf)("Not creating a persistent mapping for dynamic buffer %p because the PBA is disabled.\n", buffer);
         }
         else if (resource->bind_flags & WINED3D_BIND_SHADER_RESOURCE)
         {
