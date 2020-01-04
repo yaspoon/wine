@@ -1792,3 +1792,38 @@ DECL_HANDLER(resume_process)
         release_object( process );
     }
 }
+
+/* Get kernel and user time for a process */
+DECL_HANDLER(get_process_time)
+{
+    char procPath[32];
+    char line[1024];
+    FILE *procPidStat = NULL;
+    //See man (5) proc for format of /proc/[pid]/stat file
+    const char *procPidStatFmt = "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*lu %*lu %*lu %*lu %lu %lu";
+    unsigned __int64 utime = 0;
+    unsigned __int64 stime = 0;
+    struct process *process = get_process_from_handle( req->handle, PROCESS_QUERY_LIMITED_INFORMATION );
+
+    if (!process) return;
+#ifdef linux
+    if (process->unix_pid != -1)
+    {
+        sprintf( procPath, "/proc/%u/stat", process->unix_pid );
+        if ((procPidStat = fopen( procPath, "r" )))
+        {
+            fgets( line, sizeof(line), procPidStat );
+            if (sscanf( line, procPidStatFmt, &utime, &stime ) == 2)
+            {
+                reply->utime = utime;
+                reply->stime = stime;
+            }
+            else set_error(STATUS_SEVERITY_ERROR);
+            fclose(procPidStat);
+        }
+        else set_error( STATUS_ACCESS_DENIED );
+    }
+    else set_error( STATUS_ACCESS_DENIED );
+#endif
+    release_object( process );
+}

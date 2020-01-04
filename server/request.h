@@ -410,6 +410,7 @@ DECL_HANDLER(set_job_completion_port);
 DECL_HANDLER(terminate_job);
 DECL_HANDLER(suspend_process);
 DECL_HANDLER(resume_process);
+DECL_HANDLER(get_process_time);
 
 #ifdef WANT_REQUEST_HANDLERS
 
@@ -713,6 +714,7 @@ static const req_handler req_handlers[REQ_NB_REQUESTS] =
     (req_handler)req_terminate_job,
     (req_handler)req_suspend_process,
     (req_handler)req_resume_process,
+    (req_handler)req_get_process_time,
 };
 
 C_ASSERT( sizeof(affinity_t) == 8 );
@@ -741,6 +743,7 @@ C_ASSERT( sizeof(rectangle_t) == 16 );
 C_ASSERT( sizeof(short int) == 2 );
 C_ASSERT( sizeof(thread_id_t) == 4 );
 C_ASSERT( sizeof(timeout_t) == 8 );
+C_ASSERT( sizeof(unsigned __int64) == 8 );
 C_ASSERT( sizeof(unsigned char) == 1 );
 C_ASSERT( sizeof(unsigned int) == 4 );
 C_ASSERT( sizeof(unsigned short) == 2 );
@@ -2446,6 +2449,11 @@ C_ASSERT( FIELD_OFFSET(struct suspend_process_request, handle) == 12 );
 C_ASSERT( sizeof(struct suspend_process_request) == 16 );
 C_ASSERT( FIELD_OFFSET(struct resume_process_request, handle) == 12 );
 C_ASSERT( sizeof(struct resume_process_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_process_time_request, handle) == 12 );
+C_ASSERT( sizeof(struct get_process_time_request) == 16 );
+C_ASSERT( FIELD_OFFSET(struct get_process_time_reply, utime) == 8 );
+C_ASSERT( FIELD_OFFSET(struct get_process_time_reply, stime) == 16 );
+C_ASSERT( sizeof(struct get_process_time_reply) == 24 );
 
 #endif  /* WANT_REQUEST_HANDLERS */
 

@@ -3957,3 +3957,11 @@ struct handle_info
 @REQ(resume_process)
     obj_handle_t handle;       /* process handle */
 @END
+
+/* Get kernel and user time for a process */
+@REQ(get_process_time)
+    obj_handle_t handle;       /* process handle */
+@REPLY
+    unsigned __int64 utime;   /* time process has spent in user mode */
+    unsigned __int64 stime;   /* time process has spent in kernel mode */
+@END

@@ -5799,6 +5799,19 @@ struct resume_process_reply
 };
 
 
+struct get_process_time_request
+{
+    struct request_header __header;
+    obj_handle_t handle;
+};
+struct get_process_time_reply
+{
+    struct reply_header __header;
+    unsigned __int64 utime;
+    unsigned __int64 stime;
+};
+
+
 enum request
 {
     REQ_new_process,
@@ -6098,6 +6111,7 @@ enum request
     REQ_terminate_job,
     REQ_suspend_process,
     REQ_resume_process,
+    REQ_get_process_time,
     REQ_NB_REQUESTS
 };
 
@@ -6402,6 +6416,7 @@ union generic_request
     struct terminate_job_request terminate_job_request;
     struct suspend_process_request suspend_process_request;
     struct resume_process_request resume_process_request;
+    struct get_process_time_request get_process_time_request;
 };
 union generic_reply
 {
@@ -6704,6 +6719,7 @@ union generic_reply
     struct terminate_job_reply terminate_job_reply;
     struct suspend_process_reply suspend_process_reply;
     struct resume_process_reply resume_process_reply;
+    struct get_process_time_reply get_process_time_reply;
 };
 
 /* ### protocol_version begin ### */

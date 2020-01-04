@@ -4608,6 +4608,17 @@ static void dump_resume_process_request( const struct resume_process_request *re
     fprintf( stderr, " handle=%04x", req->handle );
 }
 
+static void dump_get_process_time_request( const struct get_process_time_request *req )
+{
+    fprintf( stderr, " handle=%04x", req->handle );
+}
+
+static void dump_get_process_time_reply( const struct get_process_time_reply *req )
+{
+    dump_uint64( " utime=", &req->utime );
+    dump_uint64( ", stime=", &req->stime );
+}
+
 static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_new_process_request,
     (dump_func)dump_exec_process_request,
@@ -4906,6 +4917,7 @@ static const dump_func req_dumpers[REQ_NB_REQUESTS] = {
     (dump_func)dump_terminate_job_request,
     (dump_func)dump_suspend_process_request,
     (dump_func)dump_resume_process_request,
+    (dump_func)dump_get_process_time_request,
 };
 
 static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
@@ -5206,6 +5218,7 @@ static const dump_func reply_dumpers[REQ_NB_REQUESTS] = {
     NULL,
     NULL,
     NULL,
+    (dump_func)dump_get_process_time_reply,
 };
 
 static const char * const req_names[REQ_NB_REQUESTS] = {
@@ -5506,6 +5519,7 @@ static const char * const req_names[REQ_NB_REQUESTS] = {
     "terminate_job",
     "suspend_process",
     "resume_process",
+    "get_process_time",
 };
 
 static const struct
@@ -5625,6 +5639,7 @@ static const struct
     { "REPARSE_POINT_NOT_RESOLVED",  STATUS_REPARSE_POINT_NOT_RESOLVED },
     { "SECTION_TOO_BIG",             STATUS_SECTION_TOO_BIG },
     { "SEMAPHORE_LIMIT_EXCEEDED",    STATUS_SEMAPHORE_LIMIT_EXCEEDED },
+    { "SEVERITY_ERROR",              STATUS_SEVERITY_ERROR },
     { "SHARING_VIOLATION",           STATUS_SHARING_VIOLATION },
     { "SHUTDOWN_IN_PROGRESS",        STATUS_SHUTDOWN_IN_PROGRESS },
     { "SUSPEND_COUNT_EXCEEDED",      STATUS_SUSPEND_COUNT_EXCEEDED },
