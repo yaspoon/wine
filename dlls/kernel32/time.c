@@ -180,7 +180,7 @@ static void TIME_ClockTimeToFileTime(clock_t unix_time, LPFILETIME filetime)
  *  Also, there is a need to separate times used by different applications.
  *
  * BUGS
- *  KernelTime and UserTime are always for the current process
+ *  Cannot get process time if hprocess handle is for another process and not on Linux
  */
 BOOL WINAPI GetProcessTimes( HANDLE hprocess, LPFILETIME lpCreationTime,
     LPFILETIME lpExitTime, LPFILETIME lpKernelTime, LPFILETIME lpUserTime )
@@ -188,7 +188,34 @@ BOOL WINAPI GetProcessTimes( HANDLE hprocess, LPFILETIME lpCreationTime,
     struct tms tms;
     KERNEL_USER_TIMES pti;
 
-    times(&tms);
+    /*CompareObjectHandles is a Window 10 thing so this should suffice.
+      If process is current process then just use times syscall*/
+    if (hprocess == GetCurrentProcess())
+        times(&tms);
+#ifdef linux
+    else
+    {
+        SERVER_START_REQ( get_process_time )
+        {
+            req->handle = wine_server_obj_handle( hprocess );
+            if (wine_server_call( req ) == STATUS_SUCCESS)
+            {
+                tms.tms_utime = reply->utime;
+                tms.tms_stime = reply->stime;
+            }
+            else
+                return FALSE;
+        }
+        SERVER_END_REQ;
+    }
+#else //If not on linux we can't get another processes time, so return failure
+    else
+    {
+        FIXME("Cannot get process time for another process on non linux OS\n");
+        return FALSE;
+    }
+#endif
+
     TIME_ClockTimeToFileTime(tms.tms_utime,lpUserTime);
     TIME_ClockTimeToFileTime(tms.tms_stime,lpKernelTime);
     if (NtQueryInformationProcess( hprocess, ProcessTimes, &pti, sizeof(pti), NULL))
